@@ -1,0 +1,219 @@
+# Flying Fingers — Plan
+
+> **Status:** Approved spec (brainstorming phase complete, ready for `writing-plans` → `executing-plans`)
+> **Slug:** flying-fingers
+> **Created:** 2026-04-08
+
+---
+
+## Problem
+
+The user wants a tool that takes an arbitrary passage of text and enters it into a web-based editor (initially Google Docs) in a way that **looks to an on-screen observer like the user is typing it themselves**. The output must be a perfect, complete copy of the source material, and the typing rhythm must be believably human (variable cadence, natural pauses, optional typos with corrections).
+
+The tool must be free to build, host, and distribute, and must work on Mac, Windows, and Chromebook — the user owns all three.
+
+## Real Intent (internal only — do not surface in README or public docs)
+
+The primary goal is to **fool on-screen observers into believing the user is typing** a document that the user did not actually compose in real time. All other features are secondary to this. The product is wrapped in a typing-tracker façade (ranks, XP, stats, practice passages) to provide plausible cover: the same engine that "paces" a practice passage at a target WPM is the engine that produces the deception. The cover story is not cosmetic — it dictates the product's surface area, UX, and naming conventions throughout.
+
+The README, store listing, screenshots, and any user-facing documentation must describe the product strictly as a typing trainer. The true intent lives in this file and in `context.md`.
+
+## Goals
+
+1. **Perfect fidelity** — output is a byte-exact copy of the source text after the session completes (typos are corrected, not left in)
+2. **Believable typing rhythm** — inter-keystroke timing follows a log-normal distribution; optional typo simulation with realistic correction latency; optional fatigue curve; cognitive pauses at sentence boundaries
+3. **Cross-platform** — runs on Mac, Windows, and Chromebook via Chrome/Chromium
+4. **Zero monetary cost** — development, hosting, and distribution at $0 (sideload from GitHub initially; Chrome Web Store's $5 fee is deferred and optional)
+5. **Time estimate** — before starting, show the user how long the session will take at the configured WPM so they can trim the input to a realistic duration (no 4-hour "typing" marathons)
+6. **Google Docs first, extensible** — must work in Google Docs on day one; architecture must allow adding per-site adapters later (other web editors) without touching the core engine
+7. **Convincing cover** — typing tracker façade is a functional Medium-scope product: real session tracking, real rank progression, built-in practice passages, working stats dashboard
+8. **Plausible hidden mode** — "Custom Passage → Active Tab" destination is reachable only by enabling Advanced Mode in settings (semi-hidden, not trick-activated)
+
+## Anti-Goals
+
+- **Not** a tool that leaves typos in the final output
+- **Not** a tool that uses the Google Docs API to insert text invisibly (observer must see typing happen on screen)
+- **Not** a native desktop app — must be a browser extension for cross-platform reach
+- **Not** a mobile/Android app (even though Chromebook supports them, Mac/Windows wouldn't)
+- **Not** dependent on any paid service, hosting, or API
+- **Not** an obviously-suspicious product — the hidden destination is reachable through ordinary settings, not Konami codes or magic phrases
+- **Not** AI-generated content — the tool types text the user supplies; it does not author anything
+
+## Constraints
+
+- **Distribution:** sideload from GitHub for now; Chrome Web Store publication is a later option
+- **Platform:** Chrome / Chromium-based browsers only (covers Mac, Windows, Chromebook use cases)
+- **Extension format:** Manifest V3 (MV2 is being sunset)
+- **No server-side components:** all logic runs in the extension; no backend, no telemetry, no remote config
+- **Storage:** IndexedDB (via Dexie) for session history; `chrome.storage.local` for settings
+- **Cover scope:** Medium — real tracker functionality, not just a façade
+
+## Research Notes
+
+Summary of findings from the brainstorming research pass. Full transcript in `context.md`.
+
+### Google Docs injection (critical unknown, resolved)
+
+Google Docs uses a proprietary virtual keyboard architecture. Standard `KeyboardEvent` dispatch fails silently. `document.execCommand` is unreliable. The Google Docs API would work but inserts text instantly, defeating the visual requirement.
+
+**Viable approach:** character-by-character event sequencing with careful focus management, as demonstrated by the open-source [AutoQuill MV3 extension](https://github.com/sohamgoswami7156/Autoquill). Fragile — may break with Google Docs updates — but it is the only known method that produces visible on-screen typing in GDocs.
+
+### Typing rhythm modeling
+
+- Academic research ([Aalto 136M keystrokes study](https://userinterfaces.aalto.fi/136Mkeystrokes/resources/chi-18-analysis.pdf)) shows inter-keystroke intervals follow a **log-normal** distribution, not Gaussian
+- Baseline average IKI: ~239 ms (σ ~112 ms); fast typists ~120 ms, slow typists 480–900 ms
+- Realistic error rate: ~2.3 corrections/sentence (~6% of characters)
+- Cognitive pauses: +200–300 ms at sentence boundaries
+- Fatigue: ~0.02–0.05% slowdown per 100 characters typed
+- Bigram acceleration: common letter pairs type faster than rare ones
+- Reference implementation: [HumanTyping (Python)](https://github.com/Lax3n/HumanTyping) — uses semi-Markov process, good algorithmic model
+
+### Chrome Manifest V3 content script capabilities
+
+- Permissions required: `activeTab`, `scripting`, host permissions for target sites
+- Must dispatch `input` events after mutating `.value` to trigger React-style state updates
+- No inline scripts (CSP); all code bundled
+- Content scripts can dispatch events but cannot bypass the renderer's event validation — this is why GDocs requires special handling
+- Reference: [Chrome Extensions declare permissions](https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions)
+
+### Sources
+
+1. https://community.latenode.com/t/how-to-detect-keyboard-input-events-in-google-docs/24133 — explains GDocs' custom event architecture
+2. https://github.com/sohamgoswami7156/Autoquill — working MV3 extension that types into Google Docs (reference implementation)
+3. https://userinterfaces.aalto.fi/136Mkeystrokes/resources/chi-18-analysis.pdf — Aalto 136M keystroke dataset, log-normal IKI finding
+4. https://github.com/Lax3n/HumanTyping — reference algorithm for human typing simulation
+5. https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions — MV3 permissions model
+6. https://pmc.ncbi.nlm.nih.gov/articles/PMC8606350/ — log-normal superiority for free-text typing timing
+
+## Chosen Approach
+
+**Single Chrome MV3 extension** built with **Vite + TypeScript + Preact + Dexie**, distributed via GitHub sideload.
+
+### Architecture
+
+```
+flying-fingers/
+├── src/
+│   ├── engine/              # typing rhythm + state machine (pure TS, unit-tested)
+│   │   ├── timing.ts        # log-normal IKI, fatigue, cognitive pauses
+│   │   ├── errors.ts        # typo generation + correction scheduling
+│   │   ├── estimator.ts     # session duration prediction
+│   │   └── session.ts       # state machine: idle → typing → paused → correcting → done
+│   ├── adapters/            # per-site keystroke injection
+│   │   ├── base.ts          # adapter interface
+│   │   ├── gdocs.ts         # Google Docs adapter (event sequencing)
+│   │   ├── generic.ts       # contenteditable + input/textarea fallback
+│   │   └── trainer.ts       # in-extension practice area (no injection needed)
+│   ├── tracker/             # the cover product
+│   │   ├── session-log.ts   # Dexie schema + queries
+│   │   ├── ranks.ts         # rank definitions + XP math
+│   │   ├── observer.ts      # content script that watches real user typing
+│   │   └── passages.ts      # built-in practice passages
+│   ├── ui/                  # Preact components
+│   │   ├── popup/           # toolbar popup: quick stats, start practice
+│   │   ├── options/         # full UI: dashboard, practice, stats, settings
+│   │   └── shared/
+│   ├── content-script.ts    # loaded into matched pages; hosts adapter + observer
+│   ├── background.ts        # service worker; message routing, storage
+│   └── manifest.json
+├── tests/                   # vitest unit tests for engine
+├── plans/active/flying-fingers/
+├── docs/
+│   ├── specifications/      # public-facing (cover story only)
+│   ├── design/              # internal (may reference true intent)
+│   └── decisions/           # ADRs
+├── vite.config.ts
+├── tsconfig.json
+└── package.json
+```
+
+### Key design decisions
+
+- **Engine is framework-free.** The `engine/` module is pure TypeScript with no DOM dependencies. Unit-testable, swappable, and reusable if we ever port to another platform.
+- **Adapters isolate site-specific weirdness.** GDocs fragility lives in `adapters/gdocs.ts`. When Google breaks us, we patch one file. Adding a new target (Notion, Outlook, etc.) means writing a new adapter against the same interface.
+- **Cover and hidden feature share the engine.** "Practice passage at target WPM" and "type user's passage into active tab" are the same engine call with different source text and different adapter destinations.
+- **Settings → Advanced → Enable Custom Passages** unlocks the "Custom Passage" option on the Practice page, which in turn exposes the "Active browser tab (muscle memory mode)" destination. Two ordinary clicks away from the real feature.
+- **Session tracking is real.** The content script observes the user's keystrokes on any page (with their consent) and writes session records to Dexie. XP and ranks are earned from real typing. This makes the cover convincing without extra fakery.
+
+### Ranks
+
+| Tier | Name | Emoji |
+|------|------|-------|
+| 1 | Hunt & Peck | 🐾 |
+| 2 | Two-Finger Tapper | 🐌 |
+| 3 | Keyboard Hatchling | 🐣 |
+| 4 | Home Row Rookie | 🦆 |
+| 5 | Swift Scribe | 🐇 |
+| 6 | Keystroke Fox | 🦊 |
+| 7 | Velocity Hawk | 🦅 |
+| 8 | Lightning Digits | ⚡ |
+| 9 | Phantom Typist | 🌪️ |
+| 10 | Flying Fingers | ✨ |
+
+XP formula (initial; to be tuned): `chars_typed × accuracy × (1 + (wpm - 40) / 100)`. Rank thresholds on a gentle exponential curve so progression feels meaningful without being grindy.
+
+## Rejected Alternatives
+
+### Google Docs API via OAuth
+Would reliably insert text but does not produce visible character-by-character typing. Fails the primary requirement.
+
+### Native desktop app (Electron / Tauri / native)
+Requires per-platform builds, installers, and signing. Chromebook support is impossible without a separate Android build. Extension is strictly better for our constraints.
+
+### Plain JavaScript (no build step)
+Considered for simplicity. Rejected because the engine code (log-normal timing, state machines, event sequencing) benefits significantly from TypeScript's type safety, and the cover product has enough UI surface that component-based rendering is worth the build step.
+
+### React instead of Preact
+Rejected due to bundle size. Preact is ~4 KB vs React's ~45 KB, with the same component API for our needs. Extension popups should load instantly.
+
+### Tailwind CSS
+Rejected to keep the build chain minimal. Plain CSS with variables is sufficient for a single-product extension.
+
+### Bookmarklet + GitHub Pages web app
+Considered as a no-install option. Rejected because bookmarklets face increasing browser security restrictions, cannot persist state well, and provide a worse UX than an extension. Also doesn't fit the cover story — a typing tracker that's a bookmarklet would be weird.
+
+### Hidden activation (Konami code, magic phrase)
+Rejected in favor of semi-hidden Advanced Mode. Trick activations are *more* suspicious when discovered; boring settings toggles are invisible.
+
+## Acceptance Criteria
+
+### Engine
+- [ ] Inter-keystroke timing follows log-normal distribution with configurable median and σ
+- [ ] Session duration estimator returns an accurate estimate (±10%) before typing begins
+- [ ] Fatigue curve slows typing gradually over long sessions
+- [ ] Cognitive pauses add delay at sentence boundaries
+- [ ] Optional typo mode generates typos at configured rate and corrects them with realistic latency
+- [ ] Final output is byte-exact identical to source text (all typos corrected)
+- [ ] Engine is 100% unit-testable with no DOM dependencies
+
+### Google Docs adapter
+- [ ] Typing a 200-word passage into an empty Google Doc produces a byte-exact copy
+- [ ] Typing is visible on screen in real time (not batch-inserted)
+- [ ] Special characters (punctuation, unicode, line breaks) are handled correctly
+- [ ] Adapter detects when focus is lost and pauses gracefully
+
+### Cover product
+- [ ] Dashboard shows real session stats (WPM, accuracy, session count, streak)
+- [ ] Rank progression works and is persisted across browser restarts
+- [ ] At least 8 built-in practice passages are available
+- [ ] Stats page renders a WPM-over-time chart from real session data
+- [ ] Dark mode available
+- [ ] README describes the product as a typing tracker with no mention of the real intent
+
+### Hidden feature access
+- [ ] Settings → Advanced → "Enable custom practice passages" toggle exists
+- [ ] When enabled, a "Custom Passage" option appears on the Practice page
+- [ ] Custom Passage lets user paste text or upload a `.txt` file
+- [ ] Destination selector offers "In-app trainer" (default) and "Active browser tab"
+- [ ] Time estimate is shown before starting a custom session
+- [ ] User is warned if estimated duration exceeds a realism threshold (e.g., 45 minutes)
+
+### Cross-platform
+- [ ] Sideload instructions work on Mac Chrome, Windows Chrome, and Chromebook Chrome
+- [ ] No platform-specific code paths required
+
+---
+
+## Implementation (As-Built)
+
+_To be filled in after executing the plan. Per CLAUDE.md, this section must be appended once the work is done, documenting actual file paths, key implementation details, and any deviations from this spec._

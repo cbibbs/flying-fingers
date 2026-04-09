@@ -4,8 +4,7 @@
 
 ## Now
 
-- [ ] **Initialize repository and push first commit** — `git init`, add `.gitignore`, create minimal `README.md` (cover-story framing only), wire up remote to https://github.com/cbibbs/flying-fingers, push plan docs as the first commit
-- [ ] **Validate the Google Docs injection assumption** — before building anything else, stand up the minimum viable experiment: a hand-written MV3 extension that types "hello world" character-by-character into a live Google Doc. If AutoQuill's approach still works on today's GDocs build, proceed. If not, revisit the plan before writing more code. (This is a spike, not the real adapter — throwaway.)
+- [ ] **Validate the Google Docs injection assumption** — before building anything else, stand up the minimum viable experiment: a hand-written MV3 extension that types "hello world" character-by-character into a live Google Doc. If the event-sequencing approach still works on today's GDocs build, proceed. If not, revisit the plan before writing more code. (This is a spike, not the real adapter — throwaway reference code.)
 
 ## Next
 
@@ -51,3 +50,4 @@ _(none yet)_
 - [x] `plan.md` drafted and approved (2026-04-08)
 - [x] `context.md` seeded with real intent and resume notes (2026-04-08)
 - [x] `tasks.md` initialized (2026-04-08)
+- [x] Repository initialized, first commit pushed to https://github.com/cbibbs/flying-fingers (2026-04-08)

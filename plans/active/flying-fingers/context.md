@@ -33,10 +33,19 @@ The README, store listing, screenshots, marketing copy, and any public documenta
 - ✅ What framework for the UI? **Preact** — React API, tiny bundle.
 
 ### Still Open
-- ❓ How fragile is the GDocs adapter in practice? Need to validate on current GDocs build before committing to the approach.
-- ❓ What's the exact event sequence AutoQuill uses? Need to read their source (`src/adapters/gdocs.ts` implementation depends on this).
+- ❓ How fragile is the GDocs adapter in practice? Need to validate on current GDocs build before committing to the approach. **← spike in progress**
 - ❓ Does Chromebook Chrome have any quirks with MV3 extensions vs. desktop Chrome? Low risk but untested.
 - ❓ Will typing simulation trigger Google's abuse detection on a real Google account? Need to test with throwaway account first.
+
+### Resolved During Execution
+- ✅ **What's the exact technique that works on current GDocs?** — Focused research on the AutoQuill source code (2026-04-08) confirms: `document.execCommand('insertText', false, char)`. No iframe targeting needed, no composition events needed, no custom `KeyboardEvent` dispatch. The deprecated `execCommand` API is explicitly preserved by the spec for undo-buffer compatibility, and GDocs still honors it.
+
+  **Note:** this conflicts with the initial brainstorming research, which called `execCommand` "unreliable". The focused follow-up (reading actual working production extension code) is more authoritative. If `execCommand` later breaks, the fallback techniques to try are:
+  1. Dispatch `InputEvent` with `inputType: 'insertText'` and `data: char` to `document.activeElement`
+  2. Target `iframe.docs-texteventtarget-iframe`'s `contentDocument.body` and dispatch synthesized keyboard events there
+  3. Dispatch composition event triplet (`compositionstart` → `compositionupdate` → `compositionend`) — this is the IME path GDocs listens on
+
+  Source: focused read of https://github.com/sohamgoswami7156/Autoquill content script (2026-04-08)
 
 ## Known Files / References
 

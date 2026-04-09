@@ -1,13 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Flying Fingers — GDocs Injection Spike",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Throwaway spike validating that character-by-character typing works in Google Docs via execCommand. Not for distribution.",
   "action": {
     "default_popup": "popup.html",
     "default_title": "GDocs Injection Spike"
   },
-  "permissions": ["activeTab", "scripting"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["https://docs.google.com/*"],
   "content_scripts": [
     {
@@ -15,5 +18,14 @@
       "js": ["content.js"],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "commands": {
+    "type-now": {
+      "suggested_key": {
+        "default": "Alt+Shift+Y",
+        "mac": "Alt+Shift+Y"
+      },
+      "description": "Type the saved test string into the focused Google Doc"
+    }
+  }
 }

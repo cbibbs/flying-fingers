@@ -1,8 +1,11 @@
 // Flying Fingers — GDocs injection spike
 // Goal: validate that character-by-character typing is visible in Google Docs.
-// Technique: document.execCommand('insertText', false, char) per AutoQuill reference.
+// Primary technique: document.execCommand('insertText', false, char)
+// Triggered by: chrome.commands keyboard shortcut (Alt+Shift+Y by default).
+// Popup-click trigger was tried in v0.0.1 and failed because popups steal focus
+// from the document. Do not revert.
 //
-// This file is throwaway. Not part of the real extension.
+// This file is throwaway.
 
 const LOG_PREFIX = "[flying-fingers spike]";
 
@@ -19,37 +22,95 @@ function err(...args) {
 }
 
 /**
- * Type a single character into whatever has focus.
- * Primary technique: document.execCommand('insertText').
- * Returns true if the call did not throw; false otherwise.
- * (execCommand returns a boolean too — we log it but don't rely on it,
- *  because GDocs has been observed to return false even when it worked.)
+ * Defense-in-depth: attempt to restore focus to the Google Docs editor
+ * before typing. GDocs captures keystrokes through a hidden iframe with
+ * class `docs-texteventtarget-iframe`. Calling .focus() on it puts focus
+ * back where execCommand expects it.
+ *
+ * Returns true if we found and focused the iframe; false otherwise.
  */
-function typeCharacter(char) {
+function tryRefocusEditor() {
+  const iframe = document.querySelector("iframe.docs-texteventtarget-iframe");
+  if (!iframe) {
+    warn("no docs-texteventtarget-iframe found");
+    return false;
+  }
   try {
-    const result = document.execCommand("insertText", false, char);
-    return { ok: true, execCommandReturned: result };
+    iframe.focus();
+    // Also try focusing the active element inside the iframe if we can reach it.
+    const innerActive = iframe.contentDocument?.activeElement;
+    if (innerActive && typeof innerActive.focus === "function") {
+      innerActive.focus();
+    }
+    return true;
   } catch (e) {
-    err("execCommand threw:", e);
-    return { ok: false, error: String(e) };
+    warn("iframe focus threw:", e);
+    return false;
   }
 }
 
 /**
- * Type a full string one character at a time, with a small delay
- * between characters so the user can see it happen.
- * Uses a fixed 80ms delay for the spike — the real engine will use
- * log-normal distribution later.
+ * Type a single character into whatever has focus.
+ * Primary: document.execCommand('insertText').
+ * Secondary (only if primary returns false): try dispatching an InputEvent
+ * with inputType 'insertText' to the active element.
  */
+function typeCharacter(char) {
+  // Primary
+  try {
+    const result = document.execCommand("insertText", false, char);
+    if (result) {
+      return { ok: true, path: "execCommand" };
+    }
+    warn(`execCommand returned false for char ${JSON.stringify(char)}, trying fallback`);
+  } catch (e) {
+    err("execCommand threw:", e);
+  }
+
+  // Fallback: dispatch InputEvent on the active element
+  try {
+    const target = document.activeElement;
+    if (!target) {
+      return { ok: false, error: "no active element for fallback" };
+    }
+    const inputEvent = new InputEvent("beforeinput", {
+      inputType: "insertText",
+      data: char,
+      bubbles: true,
+      cancelable: true,
+    });
+    target.dispatchEvent(inputEvent);
+    const inputEvent2 = new InputEvent("input", {
+      inputType: "insertText",
+      data: char,
+      bubbles: true,
+      cancelable: false,
+    });
+    target.dispatchEvent(inputEvent2);
+    return { ok: true, path: "InputEvent" };
+  } catch (e) {
+    err("InputEvent fallback threw:", e);
+    return { ok: false, error: String(e) };
+  }
+}
+
 async function typeString(text, interCharDelayMs = 80) {
-  log(`Starting to type ${text.length} characters...`);
+  log(`Typing ${text.length} chars, delay=${interCharDelayMs}ms`);
+
+  // Always try to re-focus the editor first. Does nothing harmful if focus
+  // is already correct.
+  const refocused = tryRefocusEditor();
+  log(`refocus attempt: ${refocused ? "ok" : "skipped"}`);
+
   let typed = 0;
   let failures = 0;
+  const pathCounts = {};
 
   for (const ch of text) {
     const r = typeCharacter(ch);
     if (r.ok) {
       typed += 1;
+      pathCounts[r.path] = (pathCounts[r.path] || 0) + 1;
     } else {
       failures += 1;
     }
@@ -57,21 +118,14 @@ async function typeString(text, interCharDelayMs = 80) {
     await sleep(interCharDelayMs);
   }
 
-  log(`Done. typed=${typed} failures=${failures}`);
-  return { typed, failures, total: text.length };
+  log(`Done. typed=${typed} failures=${failures} paths=`, pathCounts);
+  return { typed, failures, total: text.length, pathCounts };
 }
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Try to locate the document's editable target. GDocs uses a hidden iframe
- * (`iframe.docs-texteventtarget-iframe`) for keyboard capture. We don't need
- * to target it directly for execCommand, but we log what we find for
- * diagnostic purposes — if the primary technique fails, this tells us what
- * the fallback paths would need to aim at.
- */
 function diagnoseFocusTargets() {
   const iframe = document.querySelector("iframe.docs-texteventtarget-iframe");
   const info = {
@@ -85,11 +139,12 @@ function diagnoseFocusTargets() {
 
   if (iframe) {
     try {
-      info.iframeContentBodyEditable = iframe.contentDocument?.body?.isContentEditable ?? null;
+      info.iframeContentBodyEditable =
+        iframe.contentDocument?.body?.isContentEditable ?? null;
       info.iframeContentActiveElement =
         iframe.contentDocument?.activeElement?.tagName ?? null;
     } catch (e) {
-      warn("Could not read iframe.contentDocument (cross-origin?):", e);
+      warn("Could not read iframe.contentDocument:", e);
     }
   }
 
@@ -97,7 +152,6 @@ function diagnoseFocusTargets() {
   return info;
 }
 
-// Message bridge: the popup sends { action: 'type', text } and we attempt it.
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.action === "type") {
     const text = message.text ?? "Hello from flying fingers!";
@@ -111,9 +165,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         err("typeString failed:", e);
         sendResponse({ ok: false, error: String(e) });
       });
-
-    // Tell Chrome we'll respond asynchronously.
-    return true;
+    return true; // async
   }
 
   if (message?.action === "diagnose") {
@@ -124,4 +176,4 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return false;
 });
 
-log("Content script loaded. Open the popup and click 'Type test string'.");
+log("Content script v0.0.2 loaded. Trigger with Alt+Shift+Y while focused in the doc.");

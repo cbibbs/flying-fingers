@@ -1,62 +1,64 @@
 # GDocs Injection Spike
 
-**This is throwaway code.** Its only purpose is to answer one question:
+**Throwaway validation code.** Answers one question:
 
 > Can a Chrome MV3 content script type characters into Google Docs one-at-a-time, visibly, in 2026?
 
-If yes, we lift the technique into `src/adapters/gdocs.ts` in the real extension and continue the plan. If no, we revisit `plan.md` and pick a different injection path.
+## Version history
 
-## What it does
+- **v0.0.1** — popup-button trigger. **Failed.** Clicking the popup steals focus from the document, so `execCommand` had no editable target by the time the content script ran.
+- **v0.0.2** — keyboard-shortcut trigger. The popup is now a config screen only; actual typing fires from `Alt+Shift+Y`, which does not move focus away from the document. Also adds an `iframe.focus()` re-focus attempt as belt-and-braces, and an `InputEvent` fallback path if `execCommand` ever returns `false`.
 
-The spike is a minimal Chrome MV3 extension with four files:
+## Files
 
-- `manifest.json` — MV3 manifest, content script targets `https://docs.google.com/document/*`
-- `content.js` — runs in the page, calls `document.execCommand('insertText', false, char)` per character
-- `popup.html` — toolbar popup UI
-- `popup.js` — sends a message to the content script when you click the button
+- `manifest.json` — MV3 manifest with `commands`, `storage`, service worker
+- `background.js` — service worker, listens for the keyboard shortcut, forwards to the content script
+- `content.js` — runs on `docs.google.com/document/*`; does the typing via `execCommand`
+- `popup.html` / `popup.js` — config UI; saves text + delay to `chrome.storage.local`
 
-There is no build step. It loads as-is.
+No build step. Load as-is.
 
-## How to load it
+## Load it
 
-1. Open Chrome and navigate to `chrome://extensions`
-2. Toggle **Developer mode** on (top-right)
-3. Click **Load unpacked**
-4. Select the `spike/gdocs-injection/` folder
-5. The extension appears in your toolbar as "GDocs Injection Spike". Pin it if you want.
+1. **Reload the extension if you had v0.0.1 installed:** go to `chrome://extensions`, find "GDocs Injection Spike", click the circular reload arrow. (If you never installed it, skip to step 3.)
+2. If reload doesn't pick up the new files, click **Remove** and re-add.
+3. Open `chrome://extensions`
+4. Enable **Developer mode** (top-right)
+5. Click **Load unpacked**
+6. Select the `spike/gdocs-injection/` folder
 
-## How to test it
+## Test it
 
 1. Open a new Google Doc: https://docs.google.com/document/u/0/create
-2. **Click into the document body** so the cursor is blinking inside the doc (critical — focus must be in the editor)
-3. Click the Flying Fingers toolbar icon to open the popup
-4. Leave the default text or customize it
-5. Click **Type test string**
-6. Switch your attention to the document — you should see characters appearing one at a time at the cursor
+2. Click the Flying Fingers toolbar icon to open the popup
+3. Leave the default text or customize it
+4. Click **Save settings** — you should see a green "Saved" confirmation
+5. **Close the popup** (click anywhere outside it)
+6. **Click into the Google Doc body** so the cursor is blinking in the doc
+7. Press **Alt+Shift+Y**
+8. Watch the document — characters should appear one at a time at the cursor
+
+## Verifying the shortcut is registered
+
+Go to `chrome://extensions/shortcuts` — you should see "GDocs Injection Spike" listed with the Alt+Shift+Y binding. If the shortcut conflicts with another extension or system binding, change it there.
 
 ## What success looks like
 
 - Characters appear in the document one at a time, left to right, visibly
-- The popup status shows `typed: 83/83  failures: 0` (or whatever the length of your test string is)
+- Console in the GDocs tab (F12 → Console) shows `[flying-fingers spike] Done. typed=83 failures=0 paths= {execCommand: 83}`
 - The doc content matches the test string exactly
 
 ## What failure looks like
 
 - Nothing appears in the doc
-- `failures > 0` in the popup status
-- Text appears instantly (batch-inserted) instead of one char at a time
-- Content is garbled or characters are missing
+- Console shows `typed=0 failures=83` or similar
+- Text appears instantly (batch-inserted)
+- Characters appear but garbled or out of order
 
-If it fails, click **Run diagnosis only** and share the JSON output — it tells me which DOM targets are available so I can try a fallback technique.
+## Debugging checklist if it fails
 
-## Known caveats
-
-- **Cursor must be focused in the document** before you click the button. If focus is in the popup or the toolbar, the injection happens into nothing.
-- **`execCommand` is deprecated.** It still works (the spec preserves it for undo-buffer compatibility) but this is why we're spiking — to confirm GDocs still honors it today.
-- **Cross-origin iframe contents may not be readable** from the content script. The diagnosis may show `iframeContentBodyEditable: null` — that's OK as long as the primary typing path works.
-- This spike uses a **fixed 80ms delay** per character. The real engine will use a log-normal distribution.
-
-## Next steps based on the result
-
-- **If it works:** move to the next task in `plans/active/flying-fingers/tasks.md` → scaffold the real Vite project.
-- **If it fails:** fall back to the alternatives listed in `context.md` under "Resolved During Execution" (InputEvent dispatch, iframe targeting, composition events). Update the plan if none work.
+1. **Check the GDocs tab console** (F12 → Console) — look for `[flying-fingers spike]` messages
+2. **Check the service worker console** — in `chrome://extensions`, find the extension, click "Service worker" to open its console. Look for `[flying-fingers spike bg]` messages
+3. **Confirm the shortcut fired** — if the service worker console shows nothing when you press Alt+Shift+Y, the shortcut isn't registered. Check `chrome://extensions/shortcuts`
+4. **Confirm the content script received the message** — if the GDocs console shows the diagnosis log but not "Typing N chars", the message from background isn't reaching content.js
+5. **Share any `paths=` output** — it tells me which technique actually got the character in (`execCommand` primary or `InputEvent` fallback)

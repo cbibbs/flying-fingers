@@ -38,7 +38,13 @@ The README, store listing, screenshots, marketing copy, and any public documenta
 - ❓ Will typing simulation trigger Google's abuse detection on a real Google account? Need to test with throwaway account first.
 
 ### Resolved During Execution
-- ✅ **What's the exact technique that works on current GDocs?** — Focused research on the AutoQuill source code (2026-04-08) confirms: `document.execCommand('insertText', false, char)`. No iframe targeting needed, no composition events needed, no custom `KeyboardEvent` dispatch. The deprecated `execCommand` API is explicitly preserved by the spec for undo-buffer compatibility, and GDocs still honors it.
+- ✅ **Popups steal focus from the page.** First spike iteration (2026-04-08) triggered `execCommand` from a popup button click — it silently failed because clicking the toolbar popup moves focus from the Google Docs document to the popup window. By the time the content script ran, no editable had focus. Diagnosis output confirmed this: `activeElementTag: "IFRAME"` (the editor iframe) was correct *before* the popup click, but the actual type-time context had lost document focus.
+
+  **Fix:** trigger via `chrome.commands` keyboard shortcut instead. Keyboard shortcuts fire while the document is still focused, so `execCommand` has an editable to target. This is why production extensions (AutoQuill, Auto Typer Extension, etc.) all use keyboard-shortcut triggers instead of popup-click triggers.
+
+  **Defense-in-depth:** content script also attempts `iframe.focus()` on `iframe.docs-texteventtarget-iframe` immediately before each inject attempt, in case focus was lost for any other reason.
+
+- ✅ **What's the exact technique that works on current GDocs?** — Focused research on the AutoQuill source code (2026-04-08) confirms: `document.execCommand('insertText', false, char)`. No iframe targeting needed, no composition events needed, no custom `KeyboardEvent` dispatch. The deprecated `execCommand` API is explicitly preserved by the spec for undo-buffer compatibility, and GDocs still honors it. **Caveat:** only works when the document has focus (see popup-steals-focus finding above).
 
   **Note:** this conflicts with the initial brainstorming research, which called `execCommand` "unreliable". The focused follow-up (reading actual working production extension code) is more authoritative. If `execCommand` later breaks, the fallback techniques to try are:
   1. Dispatch `InputEvent` with `inputType: 'insertText'` and `data: char` to `document.activeElement`

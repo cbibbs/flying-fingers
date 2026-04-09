@@ -33,11 +33,30 @@ The README, store listing, screenshots, marketing copy, and any public documenta
 - ✅ What framework for the UI? **Preact** — React API, tiny bundle.
 
 ### Still Open
-- ❓ How fragile is the GDocs adapter in practice? Need to validate on current GDocs build before committing to the approach. **← spike in progress**
 - ❓ Does Chromebook Chrome have any quirks with MV3 extensions vs. desktop Chrome? Low risk but untested.
 - ❓ Will typing simulation trigger Google's abuse detection on a real Google account? Need to test with throwaway account first.
+- ❓ Does the `textInput` event technique work on other GDocs-like editors (Slides, Sheets) or will each need its own research pass?
 
 ### Resolved During Execution
+
+- ✅ **VALIDATED: Google Docs injection works via `textInput` events on the inner contenteditable.** Spike v0.0.3 ran a full 85-character test string through the real GDocs editor (2026-04-08). All characters appeared visibly on screen, one at a time. The working technique:
+  1. Get `iframe.docs-texteventtarget-iframe` from the top document
+  2. Read `iframe.contentDocument.activeElement` — this is a `DIV` with `contenteditable="true"` and `role="textbox"` inside the iframe's document
+  3. Dispatch a legacy `textInput` event (plain `Event` with `data: char` property set) to that DIV with `bubbles: true`
+
+  **What did NOT work (ruled out through the spike):**
+  - Path A: `iframe.contentDocument.execCommand('insertText', false, char)` — returned false, nothing inserted
+  - Path B: `InputEvent` with `inputType: 'insertText'` dispatched to the inner target — beforeinput was cancelled or ignored
+  - Path D: `KeyboardEvent` triplet (keydown/keypress/keyup) to the inner target — not reached (C succeeded first), but the `isTrusted: false` on synthesized keyboard events makes this unlikely to work anyway
+
+  **What also did NOT work (from earlier iterations):**
+  - Any technique run against the top-level `document` or `document.activeElement` — because the editable is inside an iframe, not the top document
+  - Popup-button trigger — steals focus from the page
+
+  **This contradicts the brainstorming research that claimed `execCommand` works.** The real answer is more nuanced: `execCommand` is the wrong technique entirely, and the correct one (`textInput` on the inner contenteditable) is the legacy webkit-style event that GDocs still honors. Record this in the implementation notes of the real adapter. The spike proved it empirically.
+
+  **Code location to lift into the real adapter:** `spike/gdocs-injection/content.js` — specifically `getEventTargetIframe()`, `getInnerTarget()`, and the Path C section of `typeCharacter()`. The four-path fallback structure itself should also be kept, because GDocs updates may eventually move to a different technique.
+
 - ✅ **Popups steal focus from the page.** First spike iteration (2026-04-08) triggered `execCommand` from a popup button click — it silently failed because clicking the toolbar popup moves focus from the Google Docs document to the popup window. By the time the content script ran, no editable had focus. Diagnosis output confirmed this: `activeElementTag: "IFRAME"` (the editor iframe) was correct *before* the popup click, but the actual type-time context had lost document focus.
 
   **Fix:** trigger via `chrome.commands` keyboard shortcut instead. Keyboard shortcuts fire while the document is still focused, so `execCommand` has an editable to target. This is why production extensions (AutoQuill, Auto Typer Extension, etc.) all use keyboard-shortcut triggers instead of popup-click triggers.

@@ -4,11 +4,10 @@
 
 ## Now
 
-- [ ] **Validate the Google Docs injection assumption** — before building anything else, stand up the minimum viable experiment: a hand-written MV3 extension that types "hello world" character-by-character into a live Google Doc. If the event-sequencing approach still works on today's GDocs build, proceed. If not, revisit the plan before writing more code. (This is a spike, not the real adapter — throwaway reference code.)
+- [ ] **Scaffold the real project** — Vite + TypeScript + Preact + `@crxjs/vite-plugin` + Dexie + Vitest. First substep: focused research on the current (2026) recommended `@crxjs/vite-plugin` setup for MV3 extensions (minimum 3 sources per executing-plans skill requirement). Then `npm init`, `vite.config.ts`, `manifest.json`, minimal popup + options pages, and a working dev loop that loads as an unpacked extension.
 
 ## Next
 
-- [ ] Scaffold the real project: Vite + TypeScript + Preact + `@crxjs/vite-plugin` + Dexie + Vitest
 - [ ] Write the first unit tests for `engine/timing.ts` (log-normal IKI distribution) — TDD RED
 - [ ] Implement `engine/timing.ts` to pass the tests — TDD GREEN
 - [ ] Implement `engine/session.ts` state machine (idle → typing → paused → correcting → done) with tests
@@ -51,3 +50,4 @@ _(none yet)_
 - [x] `context.md` seeded with real intent and resume notes (2026-04-08)
 - [x] `tasks.md` initialized (2026-04-08)
 - [x] Repository initialized, first commit pushed to https://github.com/cbibbs/flying-fingers (2026-04-08)
+- [x] **Validated the Google Docs injection technique** — spike v0.0.3 successfully typed 85 characters into a live Google Doc using `textInput` event dispatched to the inner contenteditable inside `iframe.docs-texteventtarget-iframe`. Three earlier iterations were needed: v0.0.1 failed on popup focus loss, v0.0.2 failed because top-level `document.execCommand` can't reach into iframe-owned editables, v0.0.3 crossed the iframe boundary and found the working technique (Path C: legacy `textInput` event). Full details and the exact code to lift into the real adapter recorded in `context.md`. (2026-04-08)

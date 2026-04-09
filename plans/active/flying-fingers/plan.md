@@ -178,7 +178,7 @@ Rejected in favor of semi-hidden Advanced Mode. Trick activations are *more* sus
 ## Acceptance Criteria
 
 ### Engine
-- [ ] Inter-keystroke timing follows log-normal distribution with configurable median and σ
+- [x] Inter-keystroke timing follows log-normal distribution with configurable median and σ
 - [ ] Session duration estimator returns an accurate estimate (±10%) before typing begins
 - [ ] Fatigue curve slows typing gradually over long sessions
 - [ ] Cognitive pauses add delay at sentence boundaries
@@ -216,4 +216,16 @@ Rejected in favor of semi-hidden Advanced Mode. Trick activations are *more* sus
 
 ## Implementation (As-Built)
 
-_To be filled in after executing the plan. Per CLAUDE.md, this section must be appended once the work is done, documenting actual file paths, key implementation details, and any deviations from this spec._
+_Living section; appended to as slices of the plan land._
+
+### Engine — log-normal IKI sampler (2026-04-09)
+
+- **Files:**
+  - `src/engine/timing.ts` — `createIkiSampler(config)` returning `() => number` (milliseconds)
+  - `tests/engine/timing.test.ts` — 10 Vitest specs covering distribution, determinism, and edge cases
+- **API shape:** config is a union of `{ medianMs, sigmaMs, rng }` (linear parameterization) or `{ muLog, sigmaLog, rng }` (log-space parameterization). RNG is injected (`() => number` uniform on `[0,1)`) so the sampler is seedable and deterministic — the sampler never touches `Math.random`.
+- **Math:** linear → log conversion uses `sigmaLog = sqrt(ln(1 + (sigmaMs/medianMs)^2))`, `muLog = ln(medianMs)` so the configured median is the distribution median (not the mean). Standard normals come from Box-Muller with the second draw cached across calls; `u1 === 0` is guarded to avoid `log(0) = -Infinity`.
+- **Test strategy:** tests drive a deterministic mulberry32 PRNG and assert on distributional properties — empirical median within 2% of target at N=10k, log-space sigma within 2% of target, skewness/kurtosis of `ln(samples)` within ~3σ of normality, determinism via byte-identical sequences under repeated seeding, byte-identical equivalence of linear vs log-space config branches under the same seed, and explicit coverage of the `u1 === 0` guard.
+- **Scope discipline:** fatigue curve, cognitive sentence pauses, bigram acceleration, and typo/correction logic are intentionally *not* in this slice — they are separate engine modules that will compose with the sampler. See remaining unchecked Engine acceptance criteria above.
+- **Deviations from spec:** none. The plan called for "log-normal distribution with configurable median and σ" — delivered, with the additional log-space parameterization as a convenience that passes byte-identical equivalence tests against the linear path.
+- **Review:** audited by `qe-reviewer` (2 rounds). All BLOCK and strongly-recommended FLAG findings resolved before commit.

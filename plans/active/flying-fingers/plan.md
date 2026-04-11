@@ -229,3 +229,16 @@ _Living section; appended to as slices of the plan land._
 - **Scope discipline:** fatigue curve, cognitive sentence pauses, bigram acceleration, and typo/correction logic are intentionally *not* in this slice — they are separate engine modules that will compose with the sampler. See remaining unchecked Engine acceptance criteria above.
 - **Deviations from spec:** none. The plan called for "log-normal distribution with configurable median and σ" — delivered, with the additional log-space parameterization as a convenience that passes byte-identical equivalence tests against the linear path.
 - **Review:** audited by `qe-reviewer` (2 rounds). All BLOCK and strongly-recommended FLAG findings resolved before commit.
+
+### Engine — session state machine (2026-04-11)
+
+- **Files:**
+  - `src/engine/session.ts` — `createSession(sourceText)` returning a `Session` object
+  - `tests/engine/session.test.ts` — 25 Vitest specs covering all transitions, illegal transitions, edge cases, and purity
+- **API shape:** `createSession(sourceText: string): Session`. Session exposes `start / pause / resume / beginCorrection / endCorrection / advance(elapsedMs)` plus getters `getState / getPosition / getElapsedMs / getCurrentChar / getSourceText / isDone`.
+- **States:** `idle → typing → paused → correcting → done`. All illegal transitions throw `Error("Illegal transition: cannot <action> from state \"<state>\"")`. Empty source: `start()` transitions directly to `done`.
+- **Key design decision:** `advance()` is legal in both `typing` and `correcting`. In `typing` it increments position and accumulates elapsed time; auto-transitions to `done` when position reaches source length. In `correcting` it accumulates elapsed time only (position unchanged) — correction keystrokes consume time without forward progress. This avoids a premature `recordCorrectionTime()` method before the correction slice exists.
+- **Purity:** no Date.now, no Math.random, no DOM, no side effects. Elapsed time is caller-supplied. Deterministic — two sessions with identical inputs produce identical observable state (tested).
+- **Test strategy:** strict `illegalMsg(action, state)` matchers pin the exact error message format per call site. Tests cover: all 5 legal transitions, illegal transitions from every source state for all 6 methods, 1-char boundary (off-by-one guard), `getCurrentChar` during correcting, negative elapsedMs from both typing and correcting, empty-source done illegals, pause/resume state preservation, purity/determinism, source immutability.
+- **Deviations from spec:** none.
+- **Review:** audited by `qe-reviewer` (2 rounds). All FLAG findings resolved before commit.

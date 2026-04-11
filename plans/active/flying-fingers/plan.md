@@ -181,7 +181,7 @@ Rejected in favor of semi-hidden Advanced Mode. Trick activations are *more* sus
 - [x] Inter-keystroke timing follows log-normal distribution with configurable median and σ
 - [ ] Session duration estimator returns an accurate estimate (±10%) before typing begins
 - [ ] Fatigue curve slows typing gradually over long sessions
-- [ ] Cognitive pauses add delay at sentence boundaries
+- [x] Cognitive pauses add delay at sentence boundaries
 - [ ] Optional typo mode generates typos at configured rate and corrects them with realistic latency
 - [ ] Final output is byte-exact identical to source text (all typos corrected)
 - [ ] Engine is 100% unit-testable with no DOM dependencies
@@ -242,3 +242,14 @@ _Living section; appended to as slices of the plan land._
 - **Test strategy:** strict `illegalMsg(action, state)` matchers pin the exact error message format per call site. Tests cover: all 5 legal transitions, illegal transitions from every source state for all 6 methods, 1-char boundary (off-by-one guard), `getCurrentChar` during correcting, negative elapsedMs from both typing and correcting, empty-source done illegals, pause/resume state preservation, purity/determinism, source immutability.
 - **Deviations from spec:** none.
 - **Review:** audited by `qe-reviewer` (2 rounds). All FLAG findings resolved before commit.
+
+### Engine — session duration estimator (2026-04-11)
+
+- **Files:**
+  - `src/engine/estimator.ts` — `estimateSessionDuration(config)` returning total ms
+  - `tests/engine/estimator.test.ts` — 14 Vitest specs covering correctness, edge cases, and integration
+- **API shape:** `estimateSessionDuration({ sourceText, medianMs, sigmaMs, rng, cognitivePauseMs? }): number`. Delegates to `createIkiSampler` from timing.ts for per-character IKI sampling. Adds a configurable cognitive pause (default 250ms) after sentence-ending punctuation (`.`, `!`, `?`). Returns 0 for empty text.
+- **Key design decisions:** (1) Sentence boundary detection uses a simple char-in-Set check rather than regex or lookahead — avoids abbreviation/ellipsis edge cases while keeping the code trivial. The correction slice can refine later. (2) `cognitivePauseMs` uses nullish coalescing (`??`) so callers can explicitly set 0 to disable pauses. (3) No fatigue curve yet — separate slice.
+- **Test strategy:** same-seed/same-length string pairs isolate cognitive-pause contributions via exact difference assertions. Integration tests prove byte-identical output vs manual `createIkiSampler` sums (with and without punctuation). Scaling test uses 30/120 char texts with 3.5-4.5x bounds to catch O(n^2) bugs. Sanity check asserts against the correct log-normal *mean* (not median) with 15% tolerance. Negative punctuation test (`,`, `:`, `;`, `-`, `"`, `'`) guards the punctuation set. `cognitivePauseMs: 0` test pins nullish-coalescing behavior.
+- **Deviations from spec:** none. Plan called for "session duration estimator returns accurate estimate before typing begins" + "cognitive pauses at sentence boundaries" — both delivered.
+- **Review:** audited by `qe-reviewer` (2 rounds). BLOCK (scaling tolerance) and all FLAG findings resolved before commit.

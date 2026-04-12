@@ -95,6 +95,60 @@ The README, store listing, screenshots, marketing copy, and any public documenta
 - Project scaffolding: pending
 - First code: pending
 
+## Scaffolding Research — @crxjs/vite-plugin (2026-04-09)
+
+Focused research pass before scaffolding (per executing-plans 3+ sources rule).
+
+**Key finding:** `@crxjs/vite-plugin` v2.x went stable in **June 2025** (after a 3+ year beta). Safe for production. Use `^2.0.4`+.
+
+**Sources:**
+1. https://github.com/crxjs/chrome-extension-tools — official repo; v2.0 stable June 2025; HMR works for popup/options; CSS Modules in content scripts break HMR (issue #898)
+2. https://redreamality.com/blog/the-2025-state-of-browser-extension-frameworks-a-comparative-analysis-of-plasmo-wxt-and-crxjs/ — 2025 framework comparison; CRXJS best-in-class for Vite integration + HMR; lacks built-in storage/messaging abstractions (we'll write our own)
+3. https://dev.to/zerodays/beyond-the-popup-crafting-next-level-chrome-extensions-with-crxjs-3elg — practical messaging patterns + real architecture
+4. https://dev.to/jacksteamdev/advanced-config-for-rpce-3966 — advanced config patterns (legacy RPCE, still useful)
+
+**Decisions lifted from research:**
+- Use `defineManifest()` from `@crxjs/vite-plugin` in a TS `manifest.config.ts` (intellisense + version sync with `package.json`) rather than a plain `manifest.json`
+- Use `@preact/preset-vite` for Preact
+- Keep content scripts in ISOLATED world (default) — MAIN world has known Apple Silicon breakage (`chrome.runtime.getURL` undefined)
+- Never `import` the generated `manifest.json` from app code — it overwrites the CRXJS-generated one
+- Bootstrap command: `npm create crxjs@latest` — but we'll write files by hand to keep the shape exactly matching `plan.md`'s architecture
+- HMR caveat: adding Tailwind classes to content scripts requires a Vite restart — not relevant because plan already rejected Tailwind
+
+**Recommended deps:**
+```
+@crxjs/vite-plugin ^2.0.4
+vite ^5
+typescript ^5.3
+preact ^10.19
+@preact/preset-vite (latest)
+dexie ^4
+vitest ^1
+```
+
+## UI Implementation Notes (2026-04-12)
+
+### Popup component structure
+- Simple TDD: 3 tests, all green
+- Uses inline styles (no CSS import needed at this scale)
+- Mock rank data clearly marked with `MOCK_` prefix
+- Progress bar shows visual XP progression (green bar, width = current/next percentage)
+- Button handler is a stub ready for wiring to options page
+
+### Next: tracker module dependencies
+The popup currently displays mock data. To wire it to real data, we need:
+1. `tracker/session-log.ts` — Dexie schema for recording typing sessions
+2. `tracker/ranks.ts` — rank definitions and XP progression math
+3. `tracker/observer.ts` — content script that watches real user keystrokes and records sessions
+
+Once these exist, the popup will:
+- Read the current session count + total XP from session-log via Dexie
+- Calculate rank tier from total XP using ranks.ts
+- Display the real data instead of mock
+
+### vitest config update
+Updated `vitest.config.ts` to include `.tsx` test files (in addition to `.test.ts`). Needed for Preact component testing.
+
 ## Next Session Resume Notes
 
 If you're picking this up fresh:

@@ -23,7 +23,7 @@
     "type-now": {
       "suggested_key": {
         "default": "Alt+Shift+Y",
-        "mac": "Alt+Shift+Y"
+        "mac": "Alt+Y"
       },
       "description": "Type the saved test string into the focused Google Doc"
     }

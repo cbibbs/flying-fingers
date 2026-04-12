@@ -267,3 +267,16 @@ _Living section; appended to as slices of the plan land._
 - **Test strategy:** mocks build a minimal GDocs DOM structure with shared `callLog` for ordering assertions. Tests cover: per-char dispatch with correct data, bubbles+cancelable flags, focus-before-dispatch ordering, 4 error paths (no doc, no iframe, no contentDocument, no inner target) with anchored regex matchers, empty text, BMP unicode, astral-plane emoji (guards against `text[i]` surrogate split), and both getInnerTarget paths (activeElement null, activeElement is body).
 - **Deviations from spec:** none.
 - **Review:** audited by `qe-reviewer` (2 rounds). 2 BLOCKs and 6 FLAGs resolved before commit, including an implementation bug (F6: startsWith over-match).
+
+### UI — Popup component (2026-04-12)
+
+- **Files:**
+  - `src/ui/popup/Popup.tsx` — Preact component rendering rank display, XP progress bar, and "Start Practice" button
+  - `tests/ui/popup.test.tsx` — 3 Vitest specs covering rank/emoji display, XP display, and button presence
+- **API shape:** `<Popup />` — simple component, no props (mock data used for now)
+- **Styling:** inline styles with a card layout; rank display shows emoji, name, current/next XP, and visual progress bar (green, 50% width at 250/500 XP)
+- **Mock data:** hardcoded Hunt & Peck rank (tier 1, emoji 🐾) and 250/500 XP. Clearly marked `MOCK_` constants for future replacement with real tracker data.
+- **Button handler:** `handleStartPractice` is a stub; will open the options page later when options page is built and message-passing is wired
+- **Test strategy:** renders component in a container and asserts on text content and button presence. Tests are minimal and focused on the UI contract (what should appear)
+- **Deviations from spec:** none. The "start practice" + rank/XP display requirement is met. Design is clean and ready for wiring to real tracker data.
+- **Review:** TDD cycle completed; 3/3 tests passing, typecheck clean.

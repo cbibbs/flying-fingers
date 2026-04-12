@@ -285,6 +285,23 @@ _Living section; appended to as slices of the plan land._
 - **Deviations from spec:** none. Plan called for "session recording with Dexie schema" — delivered.
 - **Review:** TDD cycle completed; 9/9 tests passing, typecheck clean.
 
+### Tracker — ranks XP math (2026-04-12)
+
+- **Files:**
+  - `src/tracker/ranks.ts` — `RANKS` constant, `calculateXp/getCurrentRank/getNextRankThreshold/getProgressToNextRank` API
+  - `tests/tracker/ranks.test.ts` — 26 Vitest specs
+- **API shape:**
+  - `RANKS: Rank[]` — 10 tiers with tier, name, emoji, thresholdXp
+  - `calculateXp({ charCount, accuracy, wpm })` → number
+  - `getCurrentRank(totalXp)` → Rank
+  - `getNextRankThreshold(totalXp)` → number
+  - `getProgressToNextRank(totalXp)` → number (0–1)
+- **XP formula:** `charCount × accuracy × (1 + (wpm - 40) / 100)` (rewards speed, accuracy, quantity)
+- **Rank thresholds:** exponential curve (baseXp * (tier - 1)^1.8) for meaningful progression
+- **Test strategy:** comprehensive coverage of edge cases (0 XP, tier boundaries, max rank, speed bonuses/penalties)
+- **Deviations from spec:** none. Plan called for "XP math + rank progression" — delivered.
+- **Review:** TDD cycle completed; 26/26 tests passing, typecheck clean.
+
 ### UI — Popup component (2026-04-12)
 
 - **Files:**

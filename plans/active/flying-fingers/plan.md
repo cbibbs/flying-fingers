@@ -253,3 +253,17 @@ _Living section; appended to as slices of the plan land._
 - **Test strategy:** same-seed/same-length string pairs isolate cognitive-pause contributions via exact difference assertions. Integration tests prove byte-identical output vs manual `createIkiSampler` sums (with and without punctuation). Scaling test uses 30/120 char texts with 3.5-4.5x bounds to catch O(n^2) bugs. Sanity check asserts against the correct log-normal *mean* (not median) with 15% tolerance. Negative punctuation test (`,`, `:`, `;`, `-`, `"`, `'`) guards the punctuation set. `cognitivePauseMs: 0` test pins nullish-coalescing behavior.
 - **Deviations from spec:** none. Plan called for "session duration estimator returns accurate estimate before typing begins" + "cognitive pauses at sentence boundaries" — both delivered.
 - **Review:** audited by `qe-reviewer` (2 rounds). BLOCK (scaling tolerance) and all FLAG findings resolved before commit.
+
+### Adapters — Google Docs injection (2026-04-11)
+
+- **Files:**
+  - `src/adapters/gdocs.ts` — `GDocsAdapter` class implementing `Adapter` from base.ts
+  - `tests/adapters/gdocs.test.ts` — 17 Vitest specs covering DOM navigation, event dispatch, focus management, error paths, and edge cases
+- **Technique:** legacy `textInput` event dispatched to the inner contenteditable DIV inside `iframe.docs-texteventtarget-iframe` (Path C from spike v0.0.3). Events created with `bubbles: true, cancelable: true`, `.data` set to the character.
+- **Focus management:** refocuses iframe + inner target before every character dispatch to recover from transient focus loss. Ordering verified via shared call-log in tests.
+- **getInnerTarget fallback:** prefers `activeElement` (if not null and not body), falls back to `querySelector('[contenteditable="true"]...')`. Both paths tested.
+- **canHandle:** matches `docs.google.com` hostname + `/document/d/` path prefix (fixed from `/document/` to avoid over-matching `/documentx/` etc).
+- **Design decision (rng parameter):** the `_rng` parameter from the `Adapter` interface is intentionally unused. Timing is the orchestrator's responsibility — the adapter does raw synchronous injection, and the engine/session controls pacing by calling the adapter with delays between characters.
+- **Test strategy:** mocks build a minimal GDocs DOM structure with shared `callLog` for ordering assertions. Tests cover: per-char dispatch with correct data, bubbles+cancelable flags, focus-before-dispatch ordering, 4 error paths (no doc, no iframe, no contentDocument, no inner target) with anchored regex matchers, empty text, BMP unicode, astral-plane emoji (guards against `text[i]` surrogate split), and both getInnerTarget paths (activeElement null, activeElement is body).
+- **Deviations from spec:** none.
+- **Review:** audited by `qe-reviewer` (2 rounds). 2 BLOCKs and 6 FLAGs resolved before commit, including an implementation bug (F6: startsWith over-match).

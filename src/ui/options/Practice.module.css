@@ -1,0 +1,136 @@
+.container {
+  padding: 16px;
+}
+
+.container h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: #333;
+}
+
+.section {
+  margin-bottom: 16px;
+}
+
+.label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  background-color: white;
+  cursor: pointer;
+}
+
+.select:hover {
+  border-color: #999;
+}
+
+.select:focus {
+  outline: 2px solid #4caf50;
+  outline-offset: -2px;
+}
+
+.preview {
+  padding: 12px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  border-left: 3px solid #1976d2;
+}
+
+.previewText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #555;
+  font-family: "Georgia", serif;
+}
+
+.destinationOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+}
+
+.radioLabel input[type="radio"] {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+}
+
+.radioLabel:hover {
+  color: #1976d2;
+}
+
+.timeEstimate {
+  padding: 12px;
+  background-color: #e8f5e9;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-left: 3px solid #4caf50;
+}
+
+.timeLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+}
+
+.timeValue {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2e7d32;
+}
+
+.startButton {
+  width: 100%;
+  padding: 10px 16px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.startButton:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.startButton:focus {
+  outline: 2px solid #1976d2;
+  outline-offset: -2px;
+}
+
+.startButton:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  color: #999;
+}

@@ -167,6 +167,79 @@ Updated `vitest.config.ts` to include `.tsx` test files (in addition to `.test.t
 - Will need to wire popup + observer + ranks + session-log together
 - Start with mock data (like popup did)
 
+## Options Page Research — Tab Components (2026-04-12)
+
+**Task:** Build options page with 4 tabs (Dashboard, Practice, Stats, Settings)
+**Research date:** 2026-04-12
+
+### Key Findings
+
+**Preact Tab Architecture:**
+- **Controlled state**: Parent (`Options` component) manages `activeTab` state + `onChange` handler
+- Enables persistence to localStorage (UX: user's tab preference survives page reload)
+- Preact state updates trigger rerenders reliably per [Preact Forms Guide](https://preactjs.com/guide/v10/forms/)
+
+**ARIA + Keyboard Navigation (required for UX):**
+- `role="tablist"` on container, `role="tab"` on buttons, `role="tabpanel"` on content
+- `aria-selected="true/false"` on tabs, `aria-controls="panel-id"` on each tab linking to its panel
+- Keyboard: Arrow keys (Left/Right) navigate with wraparound; `tabindex="0"` for active tab, `-1` for inactive
+- Auto-activate on focus (per [DEV: Keyboard Accessible Tabs](https://dev.to/eevajonnapanula/keyboard-accessible-tabs-with-react-5ch4))
+
+**CSS Strategy:**
+- Use CSS Modules instead of inline styles for tab static styling (better compression, caching)
+- Inline styles only for truly dynamic values (e.g., active indicator color if data-driven)
+- Reduces extension payload; better browser paint performance
+- [LogRocket: Why not inline styling](https://blog.logrocket.com/why-you-shouldnt-use-inline-styling-in-production-react-apps/)
+
+**Sources:**
+1. https://preactjs.com/guide/v10/forms/ (Preact state/forms)
+2. https://dev.to/eevajonnapanula/keyboard-accessible-tabs-with-react-5ch4 (keyboard nav pattern)
+3. https://medium.com/@andreasmcd/creating-an-accessible-tab-component-with-react-24ed30fde86a (ARIA tab design)
+4. https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/tab_role (MDN ARIA reference)
+5. https://blog.logrocket.com/why-you-shouldnt-use-inline-styling-in-production-react-apps/ (CSS vs inline perf)
+
+### Implementation Plan for Slice 1
+
+Build a reusable `TabContainer` component:
+- Props: `tabs` array, `activeTab` state, `onChange` handler
+- Renders: `<div role="tablist">` with buttons, then `<div role="tabpanel">` for active content
+- Keyboard: `onKeyDown` handler on tablist for Left/Right arrow navigation
+- ARIA: all required attributes wired
+- CSS Module: `TabContainer.module.css` for tab button, active state, panel styles
+- Tests: renders all tabs, keyboard nav (Left/Right/Wrap), state changes, ARIA attributes
+
+## Implementation Notes — TabContainer (2026-04-12)
+
+**Slice 1 Complete:** Built reusable `TabContainer` component using TDD.
+
+**Files:**
+- `src/ui/shared/TabContainer.tsx` — main component
+- `src/ui/shared/TabContainer.module.css` — styling with CSS Modules
+- `tests/ui/shared/TabContainer.test.tsx` — 12 comprehensive tests
+
+**Key Implementation Details:**
+- **Controlled state**: Parent passes `activeTab` (lowercase string) + `onChange` callback. Allows wiring to localStorage persistence later.
+- **ARIA compliance**: 
+  - `role="tablist"` on container, `role="tab"` on buttons, `role="tabpanel"` on panels
+  - `aria-selected`, `aria-controls`, `aria-labelledby` all wired
+  - `tabindex="0"` on active tab, `-1` on inactive (keyboard focus management)
+- **Keyboard navigation**: Left/Right arrow keys navigate with wraparound. `preventDefault()` called to avoid page scroll.
+- **CSS Modules**: Static tab styling in `.module.css` per research findings (better perf than inline). Active tab uses blue underline (#1976d2). Smooth animations on panel transitions.
+- **Children pattern**: Optional array of `VNode` children maps to panels (one child per tab). Inactive panels hidden with `display: none`.
+
+**Test coverage:**
+- Tab button rendering with labels
+- ARIA attributes (aria-selected, tabindex)
+- Click handling with lowercase normalization
+- Keyboard navigation: Right (forward), Left (backward), wraparound in both directions
+- Arrow key preventDefault behavior
+- Panel visibility toggling
+- All 12 tests passing, zero flakiness
+
+**Typecheck:** Clean
+
+**Next slice:** Dashboard tab (integrates with session-log.ts for real WPM/accuracy stats)
+
 ## Next Session Resume Notes
 
 If you're picking this up fresh:

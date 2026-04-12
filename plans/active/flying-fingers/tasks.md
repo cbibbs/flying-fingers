@@ -4,9 +4,23 @@
 
 ## Now
 
-- [ ] Build the options page: dashboard, practice, stats, settings
+- [ ] **Options page: Dashboard tab** (real session stats — WPM, accuracy, session count, streak)
+  - Integrates with tracker/session-log.ts for real data
+  - Displays stats snapshot or latest session
+  - TDD: mock session-log data, snapshot tests
 
 ## Next
+
+- [ ] **Options page: Practice tab** (built-in passages, custom passage selector with Advanced Mode gate)
+  - Built-in passages dropdown
+  - Destination selector: "In-app trainer" (always) vs "Active browser tab" (when Advanced Mode enabled)
+  - Time estimate display before starting
+  - TDD: passage list rendering, destination toggle visibility
+- [ ] **Options page: Settings tab** (profile settings, Advanced Mode toggle, dark mode)
+  - Settings form with chrome.storage.local binding
+  - Advanced Mode toggle (gate for "Custom Passage" on Practice tab)
+  - Dark mode preference
+  - TDD: storage integration, form state
 
 ## Later
 
@@ -33,6 +47,7 @@ _(none yet)_
 
 ## Done
 
+- [x] **`ui/shared/TabContainer.tsx` — accessible tab navigation (TDD)** — RED→GREEN cycle. 12/12 tests passing, typecheck clean. Controlled state management, keyboard navigation (Left/Right arrows with wraparound), ARIA compliance (role="tablist", role="tab", role="tabpanel"), CSS Module styling. Commit pending. (2026-04-12)
 - [x] **`tracker/observer.ts` — real-keystroke tracking (TDD)** — RED→GREEN cycle. 14/14 tests passing, typecheck clean. Stateless session observer: records WPM, accuracy, char/error counts. Commit `a61096b`. (2026-04-12)
 - [x] **`tracker/ranks.ts` — XP math + rank progression (TDD)** — RED→GREEN cycle. 26/26 tests passing, typecheck clean. calculateXp formula, rank tier lookup, progression tracking. Exponential thresholds (100 * tier^1.8). Commit `12c7d0a`. (2026-04-12)
 - [x] **`tracker/session-log.ts` — Dexie schema + session recording (TDD)** — RED→GREEN cycle. 9/9 tests passing, typecheck clean. Mock implementation for testing in `session-log.mock.ts` using in-memory storage. Production code uses real Dexie/IndexedDB. (2026-04-12)

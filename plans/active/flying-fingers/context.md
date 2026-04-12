@@ -149,6 +149,24 @@ Once these exist, the popup will:
 ### vitest config update
 Updated `vitest.config.ts` to include `.tsx` test files (in addition to `.test.ts`). Needed for Preact component testing.
 
+## Session 2 Summary (2026-04-12)
+
+**Completed (TDD, all passing):**
+- `tracker/session-log.ts` — Dexie schema + CRUD (9/9 tests, uses mock in tests)
+- `tracker/ranks.ts` — XP formula + 10-tier progression (26/26 tests)
+- `tracker/observer.ts` — keystroke state machine for session metrics (14/14 tests)
+
+**Latest commits:**
+- `a61096b` feat(tracker): observer
+- `4eacfce` doc: update tasks/plan with observer completion
+
+**Test status:** 132/132 passing, typecheck clean
+
+**Next Now slice:** Build the options page (dashboard, practice, stats, settings)
+- Large component tree; consider breaking into sub-components
+- Will need to wire popup + observer + ranks + session-log together
+- Start with mock data (like popup did)
+
 ## Next Session Resume Notes
 
 If you're picking this up fresh:

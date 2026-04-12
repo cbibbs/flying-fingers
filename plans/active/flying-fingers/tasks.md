@@ -4,7 +4,7 @@
 
 ## Now
 
-- [ ] Implement `tracker/observer.ts` — real-keystroke observer content script
+- [ ] Build the options page: dashboard, practice, stats, settings
 
 ## Next
 
@@ -33,6 +33,7 @@ _(none yet)_
 
 ## Done
 
+- [x] **`tracker/observer.ts` — real-keystroke tracking (TDD)** — RED→GREEN cycle. 14/14 tests passing, typecheck clean. Stateless session observer: records WPM, accuracy, char/error counts. Commit `a61096b`. (2026-04-12)
 - [x] **`tracker/ranks.ts` — XP math + rank progression (TDD)** — RED→GREEN cycle. 26/26 tests passing, typecheck clean. calculateXp formula, rank tier lookup, progression tracking. Exponential thresholds (100 * tier^1.8). Commit `12c7d0a`. (2026-04-12)
 - [x] **`tracker/session-log.ts` — Dexie schema + session recording (TDD)** — RED→GREEN cycle. 9/9 tests passing, typecheck clean. Mock implementation for testing in `session-log.mock.ts` using in-memory storage. Production code uses real Dexie/IndexedDB. (2026-04-12)
 - [x] **Minimal popup UI** — rank display + XP progress + "Start Practice" button (TDD). 3/3 tests passing. Commit pending. (2026-04-12)

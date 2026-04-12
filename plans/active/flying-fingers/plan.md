@@ -285,6 +285,16 @@ _Living section; appended to as slices of the plan land._
 - **Deviations from spec:** none. Plan called for "session recording with Dexie schema" — delivered.
 - **Review:** TDD cycle completed; 9/9 tests passing, typecheck clean.
 
+### Tracker — observer keystroke tracking (2026-04-12)
+
+- **Files:** `src/tracker/observer.ts` (pure state machine), `tests/tracker/observer.test.ts` (14 specs)
+- **API:** `createObserver()` → Observer; `start/recordKeystroke/stop/getSessionData` lifecycle
+- **Metrics:** startTime, endTime, durationMs, charCount, errorCount, WPM, accuracy
+- **Formula:** WPM = (charCount / 5) * (60000 / durationMs); accuracy = (charCount - errorCount) / charCount
+- **Test strategy:** state transitions, keystroke accumulation, accuracy/WPM calculation, error states (record while idle, idempotent stop, restart)
+- **Deviations:** none. Plan called for "observer content script" — delivered as pure JS module, content script integration TBD.
+- **Review:** TDD cycle complete; 14/14 tests passing.
+
 ### Tracker — ranks XP math (2026-04-12)
 
 - **Files:**

@@ -4,19 +4,14 @@
 
 ## Now
 
-- [ ] **Options page: Practice tab** (built-in passages, custom passage selector with Advanced Mode gate)
-  - Built-in passages dropdown
-  - Destination selector: "In-app trainer" (always) vs "Active browser tab" (when Advanced Mode enabled)
-  - Time estimate display before starting
-  - TDD: passage list rendering, destination toggle visibility
-
-## Next
-
 - [ ] **Options page: Settings tab** (profile settings, Advanced Mode toggle, dark mode)
   - Settings form with chrome.storage.local binding
   - Advanced Mode toggle (gate for "Custom Passage" on Practice tab)
   - Dark mode preference
   - TDD: storage integration, form state
+
+## Next
+
 - [ ] **Wire Options.tsx** — assemble TabContainer + Dashboard/Practice/Settings tabs
   - Options component manages activeTab state + onChange handler
   - Integrates tracker/session-log.ts → Dashboard for real data
@@ -47,6 +42,8 @@ _(none yet)_
 
 ## Done
 
+- [x] **`ui/options/Practice.tsx` — passage selection + destinations (TDD)** — RED→GREEN cycle. 12/12 tests passing, typecheck clean. 9 built-in passages (easy/medium/hard), destination selector (in-app + active-tab when Advanced Mode), time estimate via engine/estimator, passage preview, responsive UI. Commit `8f5e26c`. (2026-04-12)
+- [x] **`tracker/passages.ts` — built-in passage library** — 9 passages covering prose, technical, quotes. Passage interface with id/name/text/difficulty. `getPassageById()` + `getAllPassages()` API. Commit `8f5e26c`. (2026-04-12)
 - [x] **`ui/options/Dashboard.tsx` — stats display (TDD)** — RED→GREEN cycle. 11/11 tests passing, typecheck clean. Displays session count, chars typed, avg WPM, accuracy, best WPM from StatsSnapshot. Empty state with encouraging message when no sessions. Responsive grid layout with stat cards. Commit `de68a21`. (2026-04-12)
 - [x] **`ui/shared/TabContainer.tsx` — accessible tab navigation (TDD)** — RED→GREEN cycle. 12/12 tests passing, typecheck clean. Controlled state management, keyboard navigation (Left/Right arrows with wraparound), ARIA compliance (role="tablist", role="tab", role="tabpanel"), CSS Module styling. Commit `e3ea888`. (2026-04-12)
 - [x] **`tracker/observer.ts` — real-keystroke tracking (TDD)** — RED→GREEN cycle. 14/14 tests passing, typecheck clean. Stateless session observer: records WPM, accuracy, char/error counts. Commit `a61096b`. (2026-04-12)

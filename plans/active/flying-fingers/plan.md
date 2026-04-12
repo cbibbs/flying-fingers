@@ -268,6 +268,23 @@ _Living section; appended to as slices of the plan land._
 - **Deviations from spec:** none.
 - **Review:** audited by `qe-reviewer` (2 rounds). 2 BLOCKs and 6 FLAGs resolved before commit, including an implementation bug (F6: startsWith over-match).
 
+### Tracker — session-log Dexie schema (2026-04-12)
+
+- **Files:**
+  - `src/tracker/session-log.ts` — `SessionLogDatabase` Dexie class + `insertSession/getAllSessions/getStatsSnapshot` API
+  - `src/tracker/session-log.mock.ts` — in-memory mock for testing
+  - `tests/tracker/session-log.test.ts` — 9 Vitest specs
+  - `tests/setup.ts` — global test setup (fake-indexeddb polyfill for jsdom)
+- **API shape:**
+  - `SessionRecord` interface with auto-incremented id, timestamps, WPM, accuracy, destination, etc.
+  - `insertSession(record)` → Promise<number> (returns session ID)
+  - `getAllSessions()` → Promise<SessionRecord[]> (reverse chronological)
+  - `getStatsSnapshot()` → Promise<{ totalSessions, totalCharsTyped, averageWpm, averageAccuracy, bestWpm }>
+- **Schema:** Dexie v1 with `sessions` table indexed on `++id`, `startTime`, `createdAt`
+- **Testing strategy:** Mock implementation stores sessions in-memory array; production code uses real Dexie/IndexedDB. Both implement the same SessionRecord interface.
+- **Deviations from spec:** none. Plan called for "session recording with Dexie schema" — delivered.
+- **Review:** TDD cycle completed; 9/9 tests passing, typecheck clean.
+
 ### UI — Popup component (2026-04-12)
 
 - **Files:**

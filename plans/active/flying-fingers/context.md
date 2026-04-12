@@ -240,6 +240,51 @@ Build a reusable `TabContainer` component:
 
 **Next slice:** Dashboard tab (integrates with session-log.ts for real WPM/accuracy stats)
 
+## Implementation Notes — Dashboard (2026-04-12)
+
+**Slice 2 Complete:** Built `Dashboard` component to display session statistics.
+
+**Files:**
+- `src/ui/options/Dashboard.tsx` — main component
+- `src/ui/options/Dashboard.module.css` — responsive grid styling
+- `tests/ui/options/Dashboard.test.tsx` — 11 comprehensive tests
+
+**API Contract:**
+- Props: `{ stats: StatsSnapshot }` where StatsSnapshot has:
+  - `totalSessions: number`
+  - `totalCharsTyped: number`
+  - `averageWpm: number`
+  - `averageAccuracy: number`
+  - `bestWpm: number`
+- Intended to be called by parent Options component after fetching from `tracker/session-log.ts → getStatsSnapshot()`
+
+**Key Implementation Details:**
+- **Empty state**: Renders encouraging message + emoji when `totalSessions === 0`. Prevents confusing zero-valued stat cards.
+- **Stat cards**: Grid layout with 5 cards (Sessions, Characters, Avg WPM, Accuracy, Best WPM). Uses `auto-fit` to respect mobile widths.
+- **Formatting**: 
+  - WPM: `toFixed(1)` (e.g., "65.8")
+  - Accuracy: multiplied by 100 and fixed to 1 decimal (e.g., "97.6%")
+  - Other values: raw integers (no locale-specific thousands separators yet)
+- **Responsive design**: Cards flex to fit container; uses CSS Grid for clean alignment.
+- **Color scheme**: Light gray cards (#f9f9f9) with blue value text (#1976d2) to match overall design.
+
+**Test coverage (11 tests):**
+- Empty state ("No sessions yet" message)
+- Individual stat values displayed correctly
+- Formatting: decimal places for WPM, percentage for accuracy
+- Label rendering
+- Title/headline presence
+- Edge cases: 0 sessions, 100% accuracy, large character counts
+
+**Typecheck:** Clean
+
+**Wiring Notes:** 
+- Parent Options component will fetch `getStatsSnapshot()` from tracker/session-log.ts
+- Passes stats prop to Dashboard
+- No async logic in Dashboard itself — parent handles data loading
+
+**Next slice:** Practice tab (passages list + destination selector)
+
 ## Next Session Resume Notes
 
 If you're picking this up fresh:

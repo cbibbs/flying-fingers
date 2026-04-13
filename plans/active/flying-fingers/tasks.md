@@ -4,18 +4,11 @@
 
 ## Now
 
-- [ ] **Options page: Settings tab** (profile settings, Advanced Mode toggle, dark mode)
-  - Settings form with chrome.storage.local binding
-  - Advanced Mode toggle (gate for "Custom Passage" on Practice tab)
-  - Dark mode preference
-  - TDD: storage integration, form state
-
-## Next
-
 - [ ] **Wire Options.tsx** — assemble TabContainer + Dashboard/Practice/Settings tabs
   - Options component manages activeTab state + onChange handler
   - Integrates tracker/session-log.ts → Dashboard for real data
   - localStorage sync for tab preference persistence
+  - chrome.storage.local binding for UserSettings (read on mount, write on Settings onChange)
 
 ## Later
 
@@ -42,6 +35,7 @@ _(none yet)_
 
 ## Done
 
+- [x] **`ui/options/Settings.tsx` — Settings tab (TDD)** — RED→GREEN cycle. 12/12 tests passing, typecheck clean. Controlled component: receives `UserSettings` (advancedModeEnabled, darkMode) as props, calls `onChange` on every toggle. Parent (Options) will persist via chrome.storage.local. CSS Module styling consistent with Dashboard/Practice. 179/179 suite-wide. (2026-04-13)
 - [x] **`ui/options/Practice.tsx` — passage selection + destinations (TDD)** — RED→GREEN cycle. 12/12 tests passing, typecheck clean. 9 built-in passages (easy/medium/hard), destination selector (in-app + active-tab when Advanced Mode), time estimate via engine/estimator, passage preview, responsive UI. Commit `8f5e26c`. (2026-04-12)
 - [x] **`tracker/passages.ts` — built-in passage library** — 9 passages covering prose, technical, quotes. Passage interface with id/name/text/difficulty. `getPassageById()` + `getAllPassages()` API. Commit `8f5e26c`. (2026-04-12)
 - [x] **`ui/options/Dashboard.tsx` — stats display (TDD)** — RED→GREEN cycle. 11/11 tests passing, typecheck clean. Displays session count, chars typed, avg WPM, accuracy, best WPM from StatsSnapshot. Empty state with encouraging message when no sessions. Responsive grid layout with stat cards. Commit `de68a21`. (2026-04-12)

@@ -324,3 +324,19 @@ _Living section; appended to as slices of the plan land._
 - **Test strategy:** renders component in a container and asserts on text content and button presence. Tests are minimal and focused on the UI contract (what should appear)
 - **Deviations from spec:** none. The "start practice" + rank/XP display requirement is met. Design is clean and ready for wiring to real tracker data.
 - **Review:** TDD cycle completed; 3/3 tests passing, typecheck clean.
+
+### UI — Settings tab (2026-04-13)
+
+- **Files:**
+  - `src/ui/options/Settings.tsx` — controlled Preact component
+  - `src/ui/options/Settings.module.css` — CSS Module styling
+  - `tests/ui/options/Settings.test.tsx` — 12 Vitest specs
+- **API shape:** `<Settings settings={UserSettings} onChange={(settings) => void} />`. Exported types: `UserSettings { advancedModeEnabled: boolean; darkMode: boolean }`, `SettingsProps`.
+- **Controlled component:** Settings holds no internal state. The parent (Options) is responsible for reading initial values from `chrome.storage.local` and persisting on every `onChange` call. This makes the component fully testable without any Chrome API mocking.
+- **Toggle implementation:** each toggle is a labeled `<input type="checkbox">` with a unique `id` (e.g., `setting-advanced-mode`, `setting-dark-mode`). The `onChange` handler calls `props.onChange({ ...settings, field: !settings.field })` so the parent always receives a complete, correct `UserSettings` object.
+- **JSDOM note:** in tests, checkbox interaction requires `dispatchEvent(new Event("change", { bubbles: true }))` rather than `.click()` because Preact maps `onChange` to the DOM `change` event, and JSDOM's `.click()` does not automatically fire `change` for checkboxes.
+- **Descriptions:** Advanced Mode row includes a description explaining it enables the custom passage and active-tab destination. Dark Mode row includes a brief description.
+- **Styling:** consistent with Dashboard/Practice — 16px padding, same heading style, separator lines between rows.
+- **Test strategy:** 12 specs cover: heading presence, both toggle labels rendered, checked/unchecked state for each toggle based on props, onChange called with correct full settings object for each toggle, description text for Advanced Mode, total checkbox count (2).
+- **Deviations from spec:** chrome.storage.local binding deferred to the "Wire Options.tsx" slice (next Now item). Settings component is purely UI; persistence is the parent's responsibility.
+- **Review:** TDD cycle completed; 12/12 tests passing, 179/179 suite-wide, typecheck clean (pre-existing `tests/setup.ts` `global` type error is unrelated to this slice).
